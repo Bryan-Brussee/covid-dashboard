@@ -1,0 +1,231 @@
+<script src="//d3js.org/d3.v4.min.js"></script>
+
+<script>
+    let updateTime;
+    let casesSC;
+    let deathsSC;
+    let formatComma = d3.format(",");
+
+    d3.csv("https://www.postandcourier.com/app/covid19/google/csv/getSummary.php", function(error, summary) {
+        updateTime = summary[3]["Value"];
+        casesSC = summary[1]["Value"];
+        deathsSC = summary[2]["Value"];
+    });
+
+
+</script>
+
+
+<style>
+    #chart-container-grid {
+        background-color: #f3f4f2;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .chart-unit {
+        width: 65px;
+        height: 100px;
+        margin: 5px;
+    }
+
+    .trend-line {
+        fill: none;
+        stroke: #1d8acb;
+        stroke-width: 1.5;
+    }
+    .x-axis path {stroke: #f3f4f2}
+    .x-axis text {fill: #262b28; font-size: 9px; opacity: .6}
+    .y-axis path {stroke: #f3f4f2;}
+    .header text {  text-shadow: -1px -1px white, -1px 1px white, 1px 1px white, 1px -1px white, -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;}
+    .header > .county {font-size: 12px; font-family: "adelle-sans", "Helvetica";}
+    .header > .caseSum {font-size: 10px; opacity: .7; font-family: miller-headline;}
+    .ct-chart_source-text {
+        font-family: "adelle-sans", "lft-etica", "t26-carbon", monospace;
+        font-size: 12px;
+        letter-spacing: 0.06rem;
+        -webkit-font-feature-settings: "c2sc", "smcp";
+        font-feature-settings: "c2sc", "smcp";
+        color: #919995;
+        text-transform: uppercase}
+
+</style>
+<aside class="tncms-inline-relcontent tncms-inline-relcontent-info">
+    <h4>Where COVID-19 cases are still climbing</h4>
+    <p>These counties have a current 7-day rolling average of new cases that's higher than it was 14 days prior. Only counties with more than 100 total known cases are included.</p>
+    <div id="chart-container-grid"></div>
+    <div class="ct-chart_source-text">Source: South Carolina DHEC reports</div>
+</aside>
+<script>
+
+    let parseTime = d3.timeParse("%-m/%-d/%Y");
+
+    let formatTime = d3.timeFormat("%b %-d");
+
+    let formatgriddecimal = d3.format(".1f");
+
+    let first = true;
+
+    let counties = ["Abbeville", "Aiken", "Allendale", "Anderson", "Bamberg", "Barnwell", "Beaufort", "Berkeley",
+        "Calhoun", "Charleston", "Cherokee", "Chester", "Chesterfield", "Clarendon", "Colleton", "Darlington", "Dillon", "Dorchester",
+        "Edgefield", "Fairfield", "Florence", "Georgetown", "Greenville", "Greenwood", "Hampton", "Horry", "Jasper", "Kershaw", "Lancaster",
+        "Laurens", "Lee", "Lexington", "Marion", "Marlboro", "McCormick", "Newberry", "Oconee", "Orangeburg", "Pickens", "Richland", "Saluda",
+        "Spartanburg", "Sumter", "Union", "Williamsburg", "York"];
+
+    function getFiltered(target, county) {
+        let filteredData = target.filter(function(d) {return d.county === county});
+        for (let i = 0; i < filteredData.length; i++) {
+            if (i >= 6) {
+                filteredData[i].average = (
+                    filteredData[i].newCases +
+                    filteredData[i - 1].newCases +
+                    filteredData[i - 2].newCases +
+                    filteredData[i - 3].newCases +
+                    filteredData[i - 4].newCases +
+                    filteredData[i - 5].newCases +
+                    filteredData[i - 6].newCases) / 7;
+            } else {
+                filteredData[i].average = 0;
+            }
+        }
+        return filteredData
+    }
+
+    let margin = {top: 20, right: 0, bottom: 12, left: 0},
+        width = 65 - margin.right - margin.left,
+        height = 100 - margin.top - margin.bottom;
+
+    let x = d3.scaleBand()
+        .range([0, width])
+        .padding(.2);
+
+    let y = d3.scaleLinear().range([height, 0]);
+    // d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vSpfeUhlblYtDuDVoapPfzjzwWpKEJOCEyRHmw3LUdK-Z2GV3cmPgc_2gB8uU4AjMC2d-ViHTsag6Nj/pub?gid=1292659827&single=true&output=csv", function(error, data) {
+
+    d3.csv("https://www.postandcourier.com/app/covid19/google/csv/getCountyGrid.php", function(error, data) {
+
+        data.forEach(function(d) {
+            d.county = d.County;
+            d.date = parseTime(d.Date);
+            d.newCases = +d["SUM of Number Positive"];
+        });
+
+        console.log(data);
+
+        function generateChart(county) {
+
+            let filtered_data = getFiltered(data, county);
+
+            let latestAverage = filtered_data[filtered_data.length - 1].average;
+
+            let countySum = d3.sum(filtered_data, d => d.newCases);
+
+            if (countySum > 100 && filtered_data[filtered_data.length - 1].average > filtered_data[filtered_data.length - 15].average)
+            {
+
+                x.domain(filtered_data.map(function(d) { return d.date; }));
+                y.domain([0, d3.max(filtered_data, function(d) { return d.newCases; })]);
+
+                let xAxis = d3.axisBottom(x)
+                    .tickSize(0)
+                    .tickFormat(function(d, i) {
+                        if (i === 0 || i === filtered_data.length - 1) {
+                            return formatTime(d)
+                        }});
+
+                var yAxis = d3.axisLeft(y)
+                    .tickSize(0)
+                    .tickValues([d3.max(filtered_data, d => d.newCases)]);
+
+                let chart = d3.select("#chart-container-grid")
+                    .append("div")
+                    .attr("id", county + "_grid")
+                    .attr("class", "chart-unit")
+                    .style("background-color", "#f3f4f2")
+
+                let gridunit_svg = d3.select("#" + county + "_grid")
+                    .append("svg")
+                    .attr("width", 70)
+                    .attr("height", 100)
+
+                let averageLine = d3.line()
+                    .x(function(d) { return x(d.date)})
+                    .y(function(d) {return y(d.average)})
+                    .curve(d3.curveMonotoneX);
+
+                gridunit_svg.append("g")
+                    .attr("class", "x-axis")
+                    .attr("transform", "translate(" + margin.left +  "," + (height + margin.top) + ")")
+                    .call(xAxis)
+                    .selectAll("text")
+                    .style("text-anchor", function(d, i) {
+                        if (i === 0) {return "start"}
+                        else return "end"
+                    });
+                gridunit_svg.append("g")
+                    .attr("class", "y-axis")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                    .call(yAxis)
+                    .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", ".71em")
+                    .style("text-anchor", "end")
+
+                gridunit_svg.selectAll("bar")
+                    .data(filtered_data)
+                    .enter().append("rect")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                    .style("fill", "#1d8acb")
+                    .style("opacity", .4)
+                    .attr("x", function(d) { if (d.newCases > 0) {return x(d.date)}; })
+                    .attr("width", x.bandwidth())
+                    .attr("y", function(d) { return y(d.newCases); })
+                    .attr("height", function(d) { if (d.newCases > 0) {return height - y(d.newCases); }});
+
+                gridunit_svg.append("path")
+                    .datum(filtered_data)
+                    .attr("class", "trend-line")
+                    .attr("d", averageLine)
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                let header = gridunit_svg.append("g")
+                    .attr("class", "header")
+                    .attr("transform", "translate(0, " + margin.top/2 + ")")
+
+                header.append("text")
+                    .attr("class", "county")
+                    .text(county);
+
+                header.append("text")
+                    .attr("class", "caseSum")
+                    .attr("transform", "translate(0, " + 12 + ")")
+                    .text(function() {
+                        if (first) {return formatgriddecimal(latestAverage) + "  avg. cases"}
+                        else {return formatgriddecimal(latestAverage)}});
+
+                header.append("text")
+                    .attr("class", "caseSum")
+                    .attr("transform", "translate(0, " + 24 + ")")
+                    .text(function() {
+                        if (first) {return "per day"}
+                    })
+
+                first = false;
+            }
+
+
+
+
+        }
+
+        for (county in counties) {
+            generateChart(counties[county])
+        }
+
+
+
+    })
+</script>

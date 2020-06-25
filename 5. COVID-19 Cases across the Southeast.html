@@ -1,0 +1,404 @@
+
+<script src="//d3js.org/d3.v4.min.js"></script>
+
+<!-- CHART TOOL v1.4.1-0 -->
+<!-- edited: Thu Feb 27 2020 15:28:38 GMT-0500 (Eastern Standard Time) -->
+<!-- slug: 022720-changepollcompare -->
+<div class="ct-chart" data-chartid="ct-fTEumoPHBgJCptxAx">
+    <script type="text/javascript">
+
+
+        d3.json("https://covidtracking.com/api/v1/states/daily.json", function(error, data) {
+
+            let states = ["SC","FL","GA","NC", "TN"];
+            let parseTime = d3.timeParse("%Y%m%d");
+            let formatTime = d3.timeFormat("%Y-%m-%d");
+
+            let census = [
+                {
+                    "State": "Alabama",
+                    "Population": 4903185
+                },
+                {
+                    "State": "Alaska",
+                    "Population": 731545
+                },
+                {
+                    "State": "Arizona",
+                    "Population": 7278717
+                },
+                {
+                    "State": "Arkansas",
+                    "Population": 3017804
+                },
+                {
+                    "State": "California",
+                    "Population": 39512223
+                },
+                {
+                    "State": "Colorado",
+                    "Population": 5758736
+                },
+                {
+                    "State": "Connecticut",
+                    "Population": 3565287
+                },
+                {
+                    "State": "Delaware",
+                    "Population": 973764
+                },
+                {
+                    "State": "District of Columbia",
+                    "Population": 705749
+                },
+                {
+                    "State": "Florida",
+                    "Population": 21477737
+                },
+                {
+                    "State": "Georgia",
+                    "Population": 10617423
+                },
+                {
+                    "State": "Hawaii",
+                    "Population": 1415872
+                },
+                {
+                    "State": "Idaho",
+                    "Population": 1787065
+                },
+                {
+                    "State": "Illinois",
+                    "Population": 12671821
+                },
+                {
+                    "State": "Indiana",
+                    "Population": 6732219
+                },
+                {
+                    "State": "Iowa",
+                    "Population": 3155070
+                },
+                {
+                    "State": "Kansas",
+                    "Population": 2913314
+                },
+                {
+                    "State": "Kentucky",
+                    "Population": 4467673
+                },
+                {
+                    "State": "Louisiana",
+                    "Population": 4648794
+                },
+                {
+                    "State": "Maine",
+                    "Population": 1344212
+                },
+                {
+                    "State": "Maryland",
+                    "Population": 6045680
+                },
+                {
+                    "State": "Massachusetts",
+                    "Population": 6892503
+                },
+                {
+                    "State": "Michigan",
+                    "Population": 9986857
+                },
+                {
+                    "State": "Minnesota",
+                    "Population": 5639632
+                },
+                {
+                    "State": "Mississippi",
+                    "Population": 2976149
+                },
+                {
+                    "State": "Missouri",
+                    "Population": 6137428
+                },
+                {
+                    "State": "Montana",
+                    "Population": 1068778
+                },
+                {
+                    "State": "Nebraska",
+                    "Population": 1934408
+                },
+                {
+                    "State": "Nevada",
+                    "Population": 3080156
+                },
+                {
+                    "State": "New Hampshire",
+                    "Population": 1359711
+                },
+                {
+                    "State": "New Jersey",
+                    "Population": 8882190
+                },
+                {
+                    "State": "New Mexico",
+                    "Population": 2096829
+                },
+                {
+                    "State": "New York",
+                    "Population": 19453561
+                },
+                {
+                    "State": "North Carolina",
+                    "Population": 10488084
+                },
+                {
+                    "State": "North Dakota",
+                    "Population": 762062
+                },
+                {
+                    "State": "Ohio",
+                    "Population": 11689100
+                },
+                {
+                    "State": "Oklahoma",
+                    "Population": 3956971
+                },
+                {
+                    "State": "Oregon",
+                    "Population": 4217737
+                },
+                {
+                    "State": "Pennsylvania",
+                    "Population": 12801989
+                },
+                {
+                    "State": "Rhode Island",
+                    "Population": 1059361
+                },
+                {
+                    "State": "South Carolina",
+                    "Population": 5148714
+                },
+                {
+                    "State": "South Dakota",
+                    "Population": 884659
+                },
+                {
+                    "State": "Tennessee",
+                    "Population": 6829174
+                },
+                {
+                    "State": "Texas",
+                    "Population": 28995881
+                },
+                {
+                    "State": "Utah",
+                    "Population": 3205958
+                },
+                {
+                    "State": "Vermont",
+                    "Population": 623989
+                },
+                {
+                    "State": "Virginia",
+                    "Population": 8535519
+                },
+                {
+                    "State": "Washington",
+                    "Population": 7614893
+                },
+                {
+                    "State": "West Virginia",
+                    "Population": 1792147
+                },
+                {
+                    "State": "Wisconsin",
+                    "Population": 5822434
+                },
+                {
+                    "State": "Wyoming",
+                    "Population": 578759
+                }
+            ];
+
+            function acronymToFullName(acronym) {
+                json = {
+                    AZ: 'Arizona',
+                    AL: 'Alabama',
+                    AK: 'Alaska',
+                    AR: 'Arkansas',
+                    CA: 'California',
+                    CO: 'Colorado',
+                    CT: 'Connecticut',
+                    DC: 'District of Columbia',
+                    DE: 'Delaware',
+                    FL: 'Florida',
+                    GA: 'Georgia',
+                    HI: 'Hawaii',
+                    ID: 'Idaho',
+                    IL: 'Illinois',
+                    IN: 'Indiana',
+                    IA: 'Iowa',
+                    KS: 'Kansas',
+                    KY: 'Kentucky',
+                    LA: 'Louisiana',
+                    ME: 'Maine',
+                    MD: 'Maryland',
+                    MA: 'Massachusetts',
+                    MI: 'Michigan',
+                    MN: 'Minnesota',
+                    MS: 'Mississippi',
+                    MO: 'Missouri',
+                    MT: 'Montana',
+                    NE: 'Nebraska',
+                    NV: 'Nevada',
+                    NH: 'New Hampshire',
+                    NJ: 'New Jersey',
+                    NM: 'New Mexico',
+                    NY: 'New York',
+                    NC: 'North Carolina',
+                    ND: 'North Dakota',
+                    OH: 'Ohio',
+                    OK: 'Oklahoma',
+                    OR: 'Oregon',
+                    PA: 'Pennsylvania',
+                    RI: 'Rhode Island',
+                    SC: 'South Carolina',
+                    SD: 'South Dakota',
+                    TN: 'Tennessee',
+                    TX: 'Texas',
+                    UT: 'Utah',
+                    VT: 'Vermont',
+                    VA: 'Virginia',
+                    WA: 'Washington',
+                    WV: 'West Virginia',
+                    WI: 'Wisconsin',
+                    WY: 'Wyoming',
+                    AS: "American Samoa",
+                    GU: "Guam",
+                    MP: "Northern Mariana Islands",
+                    PR: "Puerto Rico",
+                    VI: "U.S. Virgin Islands",
+                    UM: "U.S. Minor Outlying Islands",
+                }
+                if (json[acronym] != null) {
+                    return json[acronym];
+                }
+                return acronym;
+            }
+
+            let southEast = data.filter(function (d) {
+                if (states.includes(d.state) && d.date > 20200304) {return d}
+            });
+
+            southEast.forEach(function(d) {
+                d.date  = parseTime(d.date);
+                d.date = formatTime(d.date);
+                d.state_name = acronymToFullName(d.state);
+                let matching_pop = census.filter(function(census_record) {
+                    return census_record.State === d.state_name
+                });
+                d.population = (matching_pop[0] !== undefined) ? matching_pop[0].Population : null;
+                d.per100k = Math.round(d.positive / d.population * 100000)
+            });
+
+
+            function parseData() {
+                let parsedData = "";
+                let header = "Date,";
+                for (i = 0; i < states.length; i++) {
+                    header = header+southEast[i].state + ",";
+                }
+                header = header.substring(0, header.length - 1) + "\n";
+                parsedData = parsedData + header;
+
+                for (i = 0; i < southEast.length - 4; i+=states.length) {
+                    let row = "";
+                    for (j = 0; j < states.length; j++) {
+                        row = row + southEast[i + j].per100k + ",";
+                    }
+                    parsedData = parsedData +southEast[i].date + "," + row.substring(0, row.length - 1) + "\n";
+                }
+                return parsedData
+            }
+
+            function parseUpdateTime() {
+                let updateTime = southEast[0].dateChecked;
+                let parseUpdate = d3.timeParse("%Y-%m-%dT%H:%M:%SZ");
+                let formatUpdate = d3.timeFormat("%_m/%-d/%y, %_I:%M %p");
+                let updateRaw = parseUpdate(updateTime);
+                return "Updated: " + formatUpdate(updateRaw);
+            }
+
+
+            (function (root) {
+                var data = {
+                    "version": "1.4.1",
+                    "id": "fTEumoPHBgJCptxAx",
+                    "heading": "COVID-19 CASES PER 100K ACROSS THE SOUTHEAST",
+                    "qualifier": parseUpdateTime(),
+                    "source": "The Post and Courier | Bryan Brussee | Source: The COVID Tracking Project",
+                    "tags": [],
+                    "chart": {
+                        "class": "alternate",
+                        "hasHours": false,
+                        "data":parseData(),
+                        "options": {
+                            "annotations": true,
+                            "expanded": false,
+                            "footer": true,
+                            "head": true,
+                            "indexed": false,
+                            "interpolation": "linear",
+                            "legend": true,
+                            "qualifier": true,
+                            "share_data": true,
+                            "social": true,
+                            "stacked": false,
+                            "tips": true,
+                            "type": "line",
+                            "x_axis": true,
+                            "y_axis": true
+                        },
+                        "x_axis": {
+                            "display": true,
+                            "scale": "time",
+                            "ticks": "auto",
+                            "orient": "bottom",
+                            "format": "comma",
+                            "nice": false
+                        },
+                        "y_axis": {
+                            "display": true,
+                            "scale": "linear",
+                            "ticks": "auto",
+                            "orient": "right",
+                            "format": "comma",
+                            "nice": true
+                        },
+                        "annotations": {
+                            "highlight": [],
+                            "range": [],
+                            "text": [],
+                            "pointer": []
+                        }
+                    }
+                };
+                root.ChartTool = root.ChartTool || [];
+                root.ChartTool.push({id: "ct-" + data.id, data: data});
+                var b = document.getElementsByTagName("body")[0];
+                if (!b.classList.contains("ct-charttool-init")) {
+                    b.classList.add("ct-charttool-init");
+                    var c = document.createElement("link");
+                    var j = document.createElement("script");
+                    c.href = "//www.postandcourier.com/app/js/chart-tool/chart-tool.css?token=0";
+                    c.rel = "stylesheet";
+                    j.src = "//www.postandcourier.com/app/js/chart-tool/chart-tool.js?token=0";
+                    j.async = true;
+                    j.defer = true;
+                    document.getElementsByTagName("head")[0].appendChild(c);
+                    document.getElementsByTagName("head")[0].appendChild(j);
+                }
+            })(this);
+        })
+    </script></div>

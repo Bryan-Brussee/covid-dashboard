@@ -1,0 +1,1002 @@
+
+<script src="//d3js.org/d3.v4.min.js"></script>
+
+<script>
+    let updateTime;
+    let casesSC;
+    let deathsSC;
+    let formatComma = d3.format(",");
+
+    d3.csv("https://www.postandcourier.com/app/covid19/google/csv/getSummary.php", function(error, summary) {
+        updateTime = summary[3]["Value"];
+        casesSC = summary[1]["Value"];
+        deathsSC = summary[2]["Value"];
+    });
+
+
+</script>
+
+
+<style>
+    #block-891828.block {
+        margin-top: 36px;
+        margin-bottom: 0px;
+    }
+
+    .tncms-inline-relcontent {
+        padding: 0 0 !important;
+    }
+
+    path {
+        fill: #D7D9D8;
+        stroke: #f3f4f2;
+        stroke-linejoin: round;
+    }
+
+    .legend circle {
+        fill: none;
+        stroke: #535B57;
+    }
+
+    text.timestamp {
+        fill: #535B57;
+        color: #535B57;
+        font-family: adelle-sans, sans-serif;
+        font-weight: 300;
+        font-size: 10px;
+        letter-spacing: 0.06rem;
+        -webkit-font-feature-settings: "c2sc", "smcp";
+        font-feature-settings: "c2sc", "smcp";
+    }
+
+    .legend text {
+        fill: #535B57;
+        color: #535B57;
+        font-family: adelle-sans, sans-serif;
+        text-anchor: middle;
+        font-size:12px;
+        font-weight: 600;
+    }
+
+    .sc-title {
+        alignment-baseline: central;
+        font-family: miller-headline;
+        letter-spacing: 0.06rem;
+        font-size: 1.6em;
+        fill: #262b28;
+        font-weight: bold;
+    }
+
+
+    #sc_map {
+        position: relative;
+        width:100%;
+        height: auto;
+        overflow: visible !important;
+    }
+
+
+    .sc-circles {
+        cursor: pointer;
+        fill-opacity:0.9;
+    }
+
+    .sc-button-group {
+        display: flex;
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+        -khtml-user-select: none; /* Konqueror HTML */
+        -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /
+    }
+
+    .sc-button {
+        background: #D7D9D8;
+        box-shadow: inset 0 0 0 0px #393F3C;
+        color: #262b28;
+        padding: 0.4rem 1.2rem 0.6rem 1.2rem;
+        transition: box-shadow 200ms ease-out, color 400ms ease-out;
+        font-family: adelle-sans;
+        font-weight: 500;
+        line-height: 1.1;
+        font-size: 1em;
+        cursor: pointer;
+        letter-spacing: 0.06rem;
+        font-feature-settings: "c2sc", "smcp";
+        border-right: 1px solid #f3f4f2;
+    }
+
+    .sc-button.sc-button-active {
+        box-shadow: inset 0 0 0 4px #1d8acb;
+        color: #262b28;
+        font-weight: 500;
+    }
+
+    .summary_item {
+        font-family: miller-headline;
+        letter-spacing: 0.06rem;
+        font-size: 2em;
+        fill: #262b28;
+        font-weight: 800;
+    }
+
+    .unit {
+        font-size: .9em;
+        font-family: miller-headline;
+        letter-spacing: 0.06rem;
+        fill: #262b28;
+        text-transform: uppercase;
+        font-weight: bold;
+
+    }
+
+    text.county, text.cases {
+        text-shadow: -1px -1px #f3f4f2, -1px 1px #f3f4f2, 1px 1px #f3f4f2, 1px -1px #f3f4f2, -1px 0 #f3f4f2, 0 1px #f3f4f2, 1px 0 #f3f4f2, 0 -1px #f3f4f2;
+
+        /*fill: #f15062;*/
+    }
+
+    @media only screen
+    and (max-device-width: 680px) {
+
+        #sc_map {
+            left:-1.5rem;
+            width: calc(100% + 3rem) !important;
+        }
+
+        .sc-button {
+            font-size: .7em !important;
+        }
+    }
+
+
+</style>
+<aside class="tncms-inline-relcontent tncms-inline-relcontent-info"><!--    <div id="container">-->
+    <div id="sc_map"></div>
+    <div id="sc-map-options">
+        <div class="sc-button-group"><!--            <div class="sc-button sc-button-active" id="sc-per100k">Cases per 100k</div>-->
+            <div class="sc-button sc-button-active" id="sc-newCases">New cases</div>
+            <div class="sc-button" id="sc-totalCases">All cases</div>
+            <div class="sc-button" id="sc-popAdjust">Per 100k</div>
+        </div>
+    </div>
+    <!--    </div>--></aside>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pluralize/8.0.0/pluralize.min.js"></script>
+<script>
+
+    let sc_width = 450;
+    let sc_height = 400;
+    let sc_margin = {top: 25, right: 60, bottom: 18, left: 2};
+    let sc_activeView = "newCases";
+    let popAdjust = false;
+    let tooltipText = "1.3em";
+    let tooltipSub = "1em";
+    let sc_circles;
+    let sc_tooltip;
+    let sc_thisCircle;
+    let sc_legend;
+    let sc_circleMaxRadiusPx = 25;
+    let sc_circleMinRadiusPx = 1;
+    let sc_circleColor = "#1d8acb";
+    let sc_circleColorInactive = "#e9f5fc";
+    let sc_transition_speed = 500;
+
+    let sc_svg = d3.select("#sc_map")
+        .append("svg")
+        .attr('viewBox', "0 0 " + sc_width + " " + sc_height)
+        .attr("preserveAspectRatio", "xMinYMin");
+
+    let county_data = [
+        {
+            "County": "Abbeville",
+            "Lat": 34.2138089,
+            "Long": -82.4604603,
+            "Population": 24541
+        },
+        {
+            "County": "Aiken",
+            "Lat": 33.5500134,
+            "Long": -81.632983,
+            "Population": 169401
+        },
+        {
+            "County": "Allendale",
+            "Lat": 32.9797573,
+            "Long": -81.3632651,
+            "Population": 8903
+        },
+        {
+            "County": "Anderson",
+            "Lat": 34.521235,
+            "Long": -82.6386029,
+            "Population": 200482
+        },
+        {
+            "County": "Bamberg",
+            "Lat": 33.2030211,
+            "Long": -81.0531607,
+            "Population": 14275
+        },
+        {
+            "County": "Barnwell",
+            "Lat": 33.2605516,
+            "Long": -81.4342278,
+            "Population": 21112
+        },
+        {
+            "County": "Beaufort",
+            "Lat": 32.358151,
+            "Long": -80.6895375,
+            "Population": 188715
+        },
+        {
+            "County": "Berkeley",
+            "Lat": 33.2077,
+            "Long": -79.9536554,
+            "Population": 221091
+        },
+        {
+            "County": "Calhoun",
+            "Lat": 33.6747804,
+            "Long": -80.7803468,
+            "Population": 14520
+        },
+        {
+            "County": "Charleston",
+            "Lat": 32.8004582,
+            "Long": -79.94248,
+            "Population": 405905
+        },
+        {
+            "County": "Cherokee",
+            "Lat": 35.0497962,
+            "Long": -81.6076469,
+            "Population": 57078
+        },
+        {
+            "County": "Chester",
+            "Lat": 34.6893424,
+            "Long": -81.1612488,
+            "Population": 32251
+        },
+        {
+            "County": "Chesterfield",
+            "Lat": 34.6370178,
+            "Long": -80.1592269,
+            "Population": 45754
+        },
+        {
+            "County": "Clarendon",
+            "Lat": 33.6646821,
+            "Long": -80.2178886,
+            "Population": 33700
+        },
+        {
+            "County": "Colleton",
+            "Lat": 32.8350184,
+            "Long": -80.6552438,
+            "Population": 37660
+        },
+        {
+            "County": "Darlington",
+            "Lat": 34.3321854,
+            "Long": -79.9621155,
+            "Population": 66802
+        },
+        {
+            "County": "Dillon",
+            "Lat": 34.3901723,
+            "Long": -79.3749638,
+            "Population": 30599
+        },
+        {
+            "County": "Dorchester",
+            "Lat": 33.0821859,
+            "Long": -80.4046966,
+            "Population": 160647
+        },
+        {
+            "County": "Edgefield",
+            "Lat": 33.7764976,
+            "Long": -81.9682452,
+            "Population": 27052
+        },
+        {
+            "County": "Fairfield",
+            "Lat": 34.3956685,
+            "Long": -81.1270007,
+            "Population": 22402
+        },
+        {
+            "County": "Florence",
+            "Lat": 34.0285346,
+            "Long": -79.7102329,
+            "Population": 138159
+        },
+        {
+            "County": "Georgetown",
+            "Lat": 33.4175309,
+            "Long": -79.2963325,
+            "Population": 62249
+        },
+        {
+            "County": "Greenville",
+            "Lat": 34.8926452,
+            "Long": -82.3720772,
+            "Population": 514213
+        },
+        {
+            "County": "Greenwood",
+            "Lat": 34.1557959,
+            "Long": -82.1278759,
+            "Population": 70741
+        },
+        {
+            "County": "Hampton",
+            "Lat": 32.7783349,
+            "Long": -81.1438173,
+            "Population": 19351
+        },
+        {
+            "County": "Horry",
+            "Lat": 33.9092694,
+            "Long": -78.9766749,
+            "Population": 344147
+        },
+        {
+            "County": "Jasper",
+            "Lat": 32.43059,
+            "Long": -81.021627,
+            "Population": 28971
+        },
+        {
+            "County": "Kershaw",
+            "Lat": 34.3383561,
+            "Long": -80.5908847,
+            "Population": 65592
+        },
+        {
+            "County": "Lancaster",
+            "Lat": 34.6868182,
+            "Long": -80.7036885,
+            "Population": 95380
+        },
+        {
+            "County": "Laurens",
+            "Lat": 34.4836762,
+            "Long": -82.0054952,
+            "Population": 66994
+        },
+        {
+            "County": "Lee",
+            "Lat": 34.1586401,
+            "Long": -80.2512086,
+            "Population": 17142
+        },
+        {
+            "County": "Lexington",
+            "Lat": 33.8925892,
+            "Long": -81.2728309,
+            "Population": 295032
+        },
+        {
+            "County": "Marion",
+            "Lat": 34.0836195,
+            "Long": -79.3540014,
+            "Population": 31039
+        },
+        {
+            "County": "Marlboro",
+            "Lat": 34.60167,
+            "Long": -79.6794351,
+            "Population": 26398
+        },
+        {
+            "County": "McCormick",
+            "Lat": 33.8976052,
+            "Long": -82.316192,
+            "Population": 9410
+        },
+        {
+            "County": "Newberry",
+            "Lat": 34.2897302,
+            "Long": -81.6000526,
+            "Population": 38520
+        },
+        {
+            "County": "Oconee",
+            "Lat": 34.7487713,
+            "Long": -83.0615427,
+            "Population": 78374
+        },
+        {
+            "County": "Orangeburg",
+            "Lat": 33.436135,
+            "Long": -80.8029131,
+            "Population": 86934
+        },
+        {
+            "County": "Pickens",
+            "Lat": 34.8853801,
+            "Long": -82.7233764,
+            "Population": 124937
+        },
+        {
+            "County": "Richland",
+            "Lat": 34.0290952,
+            "Long": -80.8980371,
+            "Population": 414576
+        },
+        {
+            "County": "Saluda",
+            "Lat": 34.0052784,
+            "Long": -81.7279033,
+            "Population": 20544
+        },
+        {
+            "County": "Spartanburg",
+            "Lat": 34.9332905,
+            "Long": -81.9910605,
+            "Population": 313888
+        },
+        {
+            "County": "Sumter",
+            "Lat": 33.9162531,
+            "Long": -80.3822876,
+            "Population": 106512
+        },
+        {
+            "County": "Union",
+            "Lat": 34.6903966,
+            "Long": -81.6158961,
+            "Population": 27410
+        },
+        {
+            "County": "Williamsburg",
+            "Lat": 33.6264629,
+            "Long": -79.7164752,
+            "Population": 30606
+        },
+        {
+            "County": "York",
+            "Lat": 34.9701875,
+            "Long": -81.1831873,
+            "Population": 274118
+        }
+    ]
+
+        d3.csv("https://www.postandcourier.com/app/covid19/google/csv/getMap.php", function (error, data) {
+
+            data.forEach(function (county_case) {
+                let result = county_data.filter(function (census_county) {
+                    return census_county.County === county_case.County;
+                });
+                county_case.New_cases = +county_case.New_cases;
+                county_case.Total_cases = +county_case.Total_cases;
+                county_case.Population = (result[0] !== undefined) ? result[0].Population : null;
+                county_case.Lat = (result[0] !== undefined) ? result[0].Lat : null;
+                county_case.Long = (result[0] !== undefined) ? result[0].Long : null;
+                county_case.Total_cases_pop_adjust = Math.round(county_case.Total_cases / county_case.Population * 100000);
+                county_case.New_cases_pop_adjust = Math.round(county_case.New_cases / county_case.Population * 100000);
+
+            });
+
+            data.sort(function (x, y) {
+                return d3.descending(x.New_cases, y.New_cases)
+            })
+
+            let caseSum = d3.sum(data, d => d.Total_cases);
+            let newCaseSum = d3.sum(data, d => d.New_cases);
+
+
+            let max = d3.max(data, d => d.New_cases);
+
+            let radius = d3.scaleSqrt()
+                .domain([0, max])
+                .range([sc_circleMinRadiusPx, sc_circleMaxRadiusPx]);
+
+
+            d3.json("https://data.postandcourier.com/assets/COVID19/sc.json", function (json) {
+
+
+                let projection = d3.geoMercator()
+                    .center([0, 33.85])
+                    .rotate([81.00, 0])
+                    .scale(5000)
+                    .translate([(sc_width) / 2, (sc_height / 2)]);
+
+                let path = d3.geoPath()
+                    .projection(projection);
+
+                let sc_counties = topojson.feature(json, json.objects.sc);
+
+                sc_svg.append("path")
+                    .datum(sc_counties)
+                    .attr("d", path);
+
+                let sc_header = sc_svg.append("g")
+                    .attr("id", "sc_header")
+                    .attr("transform", "translate(" + (sc_width / 2) + "," + (sc_margin.top) + ")")
+
+
+                let cases_counter = sc_header.append("g")
+                    .attr("class", "new_case_counter")
+                    .attr("transform", "translate(" + (100) + ",0)")
+                    .attr("text-anchor", "middle")
+
+
+                let new_case_counter = sc_header.append("g")
+                    .attr("class", "case_counter")
+                    .attr("transform", "translate(" + (-100) + ",0)")
+                    .attr("text-anchor", "middle")
+
+
+                cases_counter.append("text")
+                    .attr("class", "summary_item")
+                    .text(formatComma(caseSum))
+
+                cases_counter.append("text")
+                    .attr("y", 17)
+                    .attr("class", "unit")
+                    .text("Known cases")
+
+                new_case_counter.append("text")
+                    .attr("class", "summary_item")
+                    .text(formatComma(newCaseSum))
+
+
+                new_case_counter.append("text")
+                    .attr("y", 17)
+                    .attr("class", "unit")
+                    .text("Cases in the last 14 days")
+
+                sc_circles = sc_svg.selectAll("circle")
+                    .data(data)
+                    .enter()
+                    .append("circle")
+                    .attr("class", "sc-circles")
+                    .attr("id", function (d) {
+                        return d.County
+                    })
+                    .attr("cx", function (d) {
+                        return projection([d.Long, d.Lat])[0]
+                    })
+                    .attr("cy", function (d) {
+                        return projection([d.Long, d.Lat])[1]
+                    })
+                    .attr("r", function (d)  {
+
+                        return radius(d.New_cases)
+
+                    })
+                    .style("fill", sc_circleColor)
+                    .style("stroke", '#f3f4f2')
+
+                sc_tooltip = sc_svg.append("g")
+                    .attr("class", "sc_tooltip")
+                    .style("opacity", 0);
+
+                sc_circles.on("mouseover", function (d) {
+
+                    sc_thisCircle = d3.select(this).attr("id");
+                    let thisRadius = parseFloat(d3.select(this).attr("r"));
+
+                    sc_circles.transition()
+                        .duration(150)
+                        .style("fill", sc_circleColorInactive);
+
+                    d3.select(this).transition()
+                        .duration(150)
+                        .style("fill", sc_circleColor);
+
+                    sc_tooltip.append("text")
+                        .attr('class', 'county')
+                        .attr('text-anchor', function () {
+                            if (sc_thisCircle === "Oconee" || sc_thisCircle === "Anderson" || sc_thisCircle === "Abbeville" || sc_thisCircle === "York" || sc_thisCircle === "Cherokee"
+                                || sc_thisCircle === "Spartanburg" || sc_thisCircle === "Greenville" || sc_thisCircle === "Pickens") {
+                                return "start"
+                            } else if (sc_thisCircle === "Horry" || sc_thisCircle === "Georgetown" || sc_thisCircle === "Marion" || sc_thisCircle === "Dillon" || sc_thisCircle === "Marlboro" || sc_thisCircle === "Williamsburg") {
+                                return "end"
+                            } else {
+                                return "middle"
+                            }
+                        })
+                        .style("font-size", tooltipText)
+                        .text(d.County);
+
+                    sc_tooltip.append("text")
+                        .attr('class', 'cases')
+                        .attr('text-anchor', function () {
+                            if (sc_thisCircle === "Oconee" || sc_thisCircle === "Anderson" || sc_thisCircle === "Abbeville" || sc_thisCircle === "York" || sc_thisCircle === "Cherokee"
+                                || sc_thisCircle === "Spartanburg" || sc_thisCircle === "Greenville" || sc_thisCircle === "Pickens") {
+                                return "start"
+                            } else if (sc_thisCircle === "Horry" || sc_thisCircle === "Georgetown" || sc_thisCircle === "Marion" || sc_thisCircle === "Dillon" || sc_thisCircle === "Marlboro" || sc_thisCircle === "Williamsburg") {
+                                return "end"
+                            } else {
+                                return "middle"
+                            }
+                        })
+                        .style("font-size", tooltipSub)
+                        .attr("transform", "translate( 0," + 17 + ")")
+                        .text(function () {
+                            if (!popAdjust && sc_activeView === "newCases") {
+                                return formatComma(d.New_cases) + " cases in the last 14 days"
+                            } else if (popAdjust && sc_activeView === "newCases") {
+                                return formatComma(d.New_cases_pop_adjust) + " cases per 100k in the last 14 days"
+                            } else if (!popAdjust && sc_activeView === "totalCases") {
+                                return formatComma(d.Total_cases) + " confirmed " + pluralize("case", Math.round(d.Cases))
+                            } else {
+                                return formatComma(d.Total_cases_pop_adjust) + " confirmed " + pluralize("case", Math.round(d.Cases)) + " per 100k"
+                            }
+                        });
+
+                    sc_tooltip.attr("transform", function () {
+                        if (sc_thisCircle === "Oconee" || sc_thisCircle === "Anderson" || sc_thisCircle === "Abbeville" || sc_thisCircle === "York" || sc_thisCircle === "Cherokee"
+                            || sc_thisCircle === "Spartanburg" || sc_thisCircle === "Greenville" || sc_thisCircle === "Pickens") {
+                            return "translate(" + (projection([d.Long, d.Lat])[0] + thisRadius + 10)
+                                + "," + (projection([d.Long, d.Lat])[1]) + ")"
+                        } else if (sc_thisCircle === "Horry" || sc_thisCircle === "Georgetown" || sc_thisCircle === "Marion" || sc_thisCircle === "Dillon" || sc_thisCircle === "Marlboro" || sc_thisCircle === "Williamsburg") {
+                            return "translate(" + (projection([d.Long, d.Lat])[0] - thisRadius - 10)
+                                + "," + projection([d.Long, d.Lat])[1] + ")"
+                        } else {
+                            return "translate(" + projection([d.Long, d.Lat])[0]
+                                + "," + (projection([d.Long, d.Lat])[1] - thisRadius - 25) + ")"
+                        }
+                    });
+
+                    sc_tooltip.transition()
+                        .duration(150)
+                        .style("opacity", .9);
+                });
+
+                sc_circles.on("mouseout", function (d) {
+
+                    sc_circles.transition()
+                        .duration(150)
+                        .style("fill", sc_circleColor);
+
+                    sc_tooltip.transition()
+                        .duration(150)
+                        .style("opacity", 0)
+
+                    sc_tooltip
+                        .text("");
+                });
+
+                sc_legend = sc_svg.append("g")
+                    .attr("class", "legend")
+                    .attr("transform", "translate(" + (sc_width - sc_margin.right) + "," + (sc_height - sc_margin.bottom) + ")")
+                    .selectAll("g")
+                    .data([max / 6, max / 2, max])
+                    .enter().append("g");
+
+
+                sc_legend.append("circle")
+                    .attr("cy", function (d) {
+                        return -radius(d);
+                    })
+                    .attr("r", radius);
+
+                sc_legend.append("text")
+                    .attr("y", function (d) {
+                        return -2 * radius(d);
+                    })
+                    .attr("dy", "1.3em")
+                    .style("font-size", ".65em")
+                    .text(d3.format(".2s"))
+
+                sc_legend.append("text")
+                    .attr("y", 12)
+                    .style("font-size", ".7em")
+                    .text("New cases")
+            });
+
+
+            sc_svg.append('text')
+                .attr("class", "timestamp")
+                .attr("x", sc_margin.left)
+                .attr("y", sc_height - sc_margin.bottom + 15)
+                .attr('text-anchor', 'left')
+                .style("fill", "#535B57")
+                .text("Updated: " + updateTime)
+
+
+            function viewNewCases() {
+
+                max = d3.max(data, d => d.New_cases);
+
+                radius = d3.scaleSqrt()
+                    .domain([0, max])
+                    .range([sc_circleMinRadiusPx, sc_circleMaxRadiusPx]);
+
+                sc_circles.transition()
+                    .duration(sc_transition_speed)
+                    .attr("r", function (d) {
+                        return radius(d.New_cases)
+                    })
+
+                sc_legend.transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 0)
+                    .remove();
+
+                sc_legend = sc_svg.append("g")
+                    .attr("class", "legend")
+                    .attr("transform", "translate(" + (sc_width - sc_margin.right) + "," + (sc_height - sc_margin.bottom) + ")")
+                    .selectAll("g")
+                    .data([max / 6, max / 2, max])
+                    .enter().append("g");
+
+                sc_legend.append("circle")
+                    .attr("cy", function (d) {
+                        return -radius(d);
+                    })
+                    .attr("r", radius)
+                    .style("opacity", 0)
+                    .transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 1);
+
+                sc_legend.append("text")
+                    .attr("y", function (d) {
+                        return -2 * radius(d);
+                    })
+                    .attr("dy", "1.3em")
+                    .style("font-size", ".65em")
+                    .text(d3.format(".2s"))
+                    .style("opacity", 0)
+                    .transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 1);
+
+                sc_legend.append("text")
+                    .style("opacity", 0)
+                    .attr("y", 12)
+                    .style("font-size", ".7em")
+                    .text("New cases")
+                    .transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 1);
+            }
+
+            function viewTotalCases() {
+                max = d3.max(data, d => d.Total_cases);
+                caseSum = d3.sum(data, d => d.Total_cases);
+
+
+
+                radius = d3.scaleSqrt()
+                    .domain([0, max])
+                    .range([sc_circleMinRadiusPx, sc_circleMaxRadiusPx]);
+
+                sc_circles.transition()
+                    .duration(sc_transition_speed)
+                    .attr("r", function (d) {
+                        return radius(d.Total_cases)
+                    })
+
+                sc_legend.transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 0)
+                    .remove();
+
+                sc_legend = sc_svg.append("g")
+                    .attr("class", "legend")
+                    .attr("transform", "translate(" + (sc_width - sc_margin.right) + "," + (sc_height - sc_margin.bottom) + ")")
+                    .selectAll("g")
+                    .data([max / 6, max / 2, max])
+                    .enter().append("g");
+
+                sc_legend.append("circle")
+                    .attr("cy", function (d) {
+                        return -radius(d);
+                    })
+                    .attr("r", radius)
+                    .style("opacity", 0)
+                    .transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 1);
+
+                sc_legend.append("text")
+                    .attr("y", function (d) {
+                        return -2 * radius(d);
+                    })
+                    .attr("dy", "1.3em")
+                    .style("font-size", ".65em")
+                    .text(d3.format(".2s"))
+                    .style("opacity", 0)
+                    .transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 1);
+
+                sc_legend.append("text")
+                    .style("opacity", 0)
+                    .attr("y", 12)
+                    .style("font-size", ".7em")
+                    .text("Known cases")
+                    .transition()
+                    .duration(sc_transition_speed)
+                    .style("opacity", 1);
+
+            }
+
+
+            function viewPopAdjust() {
+
+                if (sc_activeView === "totalCases") {
+
+                    max = d3.max(data, d => d.Total_cases_pop_adjust);
+
+                    radius = d3.scaleSqrt()
+                        .domain([0, max])
+                        .range([sc_circleMinRadiusPx, sc_circleMaxRadiusPx]);
+
+                    sc_circles.transition()
+                        .duration(sc_transition_speed)
+                        .attr("r", function (d) {
+                            return radius(d.Total_cases_pop_adjust)
+                        })
+
+                    sc_legend.transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 0)
+                        .remove();
+
+                    sc_legend = sc_svg.append("g")
+                        .attr("class", "legend")
+                        .attr("transform", "translate(" + (sc_width - sc_margin.right) + "," + (sc_height - sc_margin.bottom) + ")")
+                        .selectAll("g")
+                        .data([max / 6, max / 2, max])
+                        .enter().append("g");
+
+                    sc_legend.append("circle")
+                        .attr("cy", function (d) {
+                            return -radius(d);
+                        })
+                        .attr("r", radius)
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 1);
+
+                    sc_legend.append("text")
+                        .attr("y", function (d) {
+                            return -2 * radius(d);
+                        })
+                        .attr("dy", "1.3em")
+                        .style("font-size", ".65em")
+                        .text(d3.format(".2s"))
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 1);
+
+                    sc_legend.append("text")
+                        .style("opacity", 0)
+                        .attr("y", 12)
+                        .style("font-size", ".7em")
+                        .text("Per 100k")
+                        .transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 1);
+                } else {
+                    max = d3.max(data, d => d.New_cases_pop_adjust);
+
+                    radius = d3.scaleSqrt()
+                        .domain([0, max])
+                        .range([sc_circleMinRadiusPx, sc_circleMaxRadiusPx]);
+
+                    sc_circles.transition()
+                        .duration(sc_transition_speed)
+                        .attr("r", function (d) {
+                            return radius(d.New_cases_pop_adjust)
+                        })
+
+                    sc_legend.transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 0)
+                        .remove();
+
+                    sc_legend = sc_svg.append("g")
+                        .attr("class", "legend")
+                        .attr("transform", "translate(" + (sc_width - sc_margin.right) + "," + (sc_height - sc_margin.bottom) + ")")
+                        .selectAll("g")
+                        .data([max / 6, max / 2, max])
+                        .enter().append("g");
+
+                    sc_legend.append("circle")
+                        .attr("cy", function (d) {
+                            return -radius(d);
+                        })
+                        .attr("r", radius)
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 1);
+
+                    sc_legend.append("text")
+                        .attr("y", function (d) {
+                            return -2 * radius(d);
+                        })
+                        .attr("dy", "1.3em")
+                        .style("font-size", ".65em")
+                        .text(d3.format(".2s"))
+                        .style("opacity", 0)
+                        .transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 1);
+
+                    sc_legend.append("text")
+                        .style("opacity", 0)
+                        .attr("y", 12)
+                        .style("font-size", ".7em")
+                        .text("Per 100k")
+                        .transition()
+                        .duration(sc_transition_speed)
+                        .style("opacity", 1);
+                }
+            }
+
+
+
+            function setTotalCases() {
+                sc_activeView = "totalCases";
+                document.getElementById('sc-totalCases').classList = "sc-button sc-button-active";
+                document.getElementById('sc-newCases').classList = "sc-button";
+            }
+
+            function setNewCases() {
+                sc_activeView = "newCases";
+                document.getElementById('sc-newCases').classList = "sc-button sc-button-active";
+                document.getElementById('sc-totalCases').classList = "sc-button";
+            }
+
+            function setPopAdjust() {
+                if (popAdjust) {
+                    popAdjust = false;
+                    document.getElementById('sc-popAdjust').classList = "sc-button";
+                } else {
+                    popAdjust = true;
+                    document.getElementById('sc-popAdjust').classList = "sc-button sc-button-active";
+                }
+            }
+
+            document.getElementById('sc-totalCases').addEventListener("click", function (e, t) {
+                setTotalCases();
+                e.preventDefault();
+                if (popAdjust) {
+                    viewPopAdjust()
+                } else {
+                    viewTotalCases();
+                }
+            });
+
+            document.getElementById('sc-newCases').addEventListener("click", function (e, t) {
+                setNewCases();
+                e.preventDefault();
+                if (popAdjust) {
+                    viewPopAdjust()
+                } else {
+                    viewNewCases();
+                }
+            });
+
+            document.getElementById('sc-popAdjust').addEventListener("click", function (e, t) {
+                setPopAdjust();
+                e.preventDefault();
+                if (popAdjust) {
+                    viewPopAdjust();
+                } else if (sc_activeView === "totalCases") {
+                    viewTotalCases()
+                } else {
+                    viewNewCases()
+                }
+
+            });
+
+        });
+
+
+</script>

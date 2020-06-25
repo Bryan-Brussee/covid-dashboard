@@ -1,0 +1,121 @@
+<script src="//d3js.org/d3.v4.min.js"></script>
+
+<script>
+    let updateTime;
+    let casesSC;
+    let deathsSC;
+    let formatComma = d3.format(",");
+
+    d3.csv("https://www.postandcourier.com/app/covid19/google/csv/getSummary.php", function(error, summary) {
+        updateTime = summary[3]["Value"];
+        casesSC = summary[1]["Value"];
+        deathsSC = summary[2]["Value"];
+    });
+</script>
+
+
+<style>
+    #block-914117 .ct-first-one.ct-type_line .ct-series_group .ct-line.ct-line-1 {
+        stroke-width: 1px;
+        stroke-dasharray: 3;
+        stroke: #919995;
+    }
+
+    #block-914117 .ct-first-one.ct-type_line .ct-series_group .ct-line.ct-line-0 {
+        stroke-width: 4px;
+    }
+
+</style>
+<!-- CHART TOOL v1.4.1-0 -->
+<!-- edited: Fri May 15 2020 15:56:52 GMT-0400 (Eastern Daylight Time) -->
+<!-- slug: pc-051520-int-tony1 -->
+<div class="ct-chart" data-chartid="ct-PQmJc384KcvwYNJRb">
+    <script type="text/javascript">
+
+
+        d3.csv("https://www.postandcourier.com/app/covid19/google/csv/getdata.php", function(error, data) {
+
+            function parseData() {
+                let parsedData = "Date, 7-Day Average, New Deaths\n";
+                for (let i = 0; i < data.length; i++) {
+                    let clean_row = data[i].Date + ',' + data[i]["7-day average (deaths)"] + ',' + data[i]["New deaths"] + '\n';
+                    parsedData = parsedData.concat(clean_row);
+                }
+                return parsedData;
+            }
+
+            function parseUpdateTime() {
+                return "Updated: " + updateTime
+            }
+
+            (function (root) {
+                var data = {
+                    "version": "1.4.1",
+                    "id": "PQmJc384KcvwYNJRb",
+                    "heading": "REPORTED DEATHS PER DAY IN S.C.",
+                    "qualifier": parseUpdateTime(),
+                    "source": "The Post and Courier",
+                    "tags": [],
+                    "chart": {
+                        "class": "first-one",
+                        "hasHours": false,
+                        "data": parseData(),
+                        "options": {
+                            "annotations": true,
+                            "expanded": false,
+                            "footer": true,
+                            "head": true,
+                            "indexed": false,
+                            "interpolation": "linear",
+                            "legend": true,
+                            "qualifier": true,
+                            "share_data": true,
+                            "social": true,
+                            "stacked": false,
+                            "tips": true,
+                            "type": "line",
+                            "x_axis": true,
+                            "y_axis": true
+                        },
+                        "x_axis": {
+                            "display": true,
+                            "scale": "time",
+                            "ticks": "auto",
+                            "orient": "bottom",
+                            "format": "comma",
+                            "nice": false
+                        },
+                        "y_axis": {
+                            "display": true,
+                            "scale": "linear",
+                            "ticks": "auto",
+                            "orient": "right",
+                            "format": "comma",
+                            "nice": true
+                        },
+                        "annotations": {
+                            "highlight": [],
+                            "range": [],
+                            "text": [],
+                            "pointer": []
+                        }
+                    }
+                };
+                root.ChartTool = root.ChartTool || [];
+                root.ChartTool.push({id: "ct-" + data.id, data: data});
+                var b = document.getElementsByTagName("body")[0];
+                if (!b.classList.contains("ct-charttool-init")) {
+                    b.classList.add("ct-charttool-init");
+                    var c = document.createElement("link");
+                    var j = document.createElement("script");
+                    c.href = "//www.postandcourier.com/app/js/chart-tool/chart-tool.css?token=0";
+                    c.rel = "stylesheet";
+                    j.src = "//www.postandcourier.com/app/js/chart-tool/chart-tool.js?token=0";
+                    j.async = true;
+                    j.defer = true;
+                    document.getElementsByTagName("head")[0].appendChild(c);
+                    document.getElementsByTagName("head")[0].appendChild(j);
+                }
+            })(this);
+        })
+    </script></div>
